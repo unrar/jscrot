@@ -19,17 +19,7 @@ public class jscrot {
         Robot robot = new Robot();
         return robot.createScreenCapture(screenRectangle);
     }
-    // Get extension
-    public static String getExtension(File f) {
-        String ext = null;
-        String s = f.getName();
-        int i = s.lastIndexOf('.');
 
-        if (i > 0 &&  i < s.length() - 1) {
-            ext = s.substring(i+1).toLowerCase();
-        }
-        return ext;
-    }
     public static void takeScreenshot() throws Exception {
         // Take the screen shot
         BufferedImage screenShot = scrot();
@@ -46,7 +36,7 @@ public class jscrot {
             File file = new File(fc.getSelectedFile().getCanonicalPath() + "." + ((FileNameExtensionFilter) fc.getFileFilter()).getExtensions()[0]);
 
             try {
-                ImageIO.write(screenShot, getExtension(file), file);
+                ImageIO.write(screenShot, Utils.getExtension(file), file);
             } catch (Exception e) {
                 System.out.println("Error: You selected an invalid file type!");
             }
@@ -64,7 +54,7 @@ public class jscrot {
         }
     }
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
 
         // If tray icon is NOT supported:
         if (!SystemTray.isSupported()) {
@@ -79,6 +69,15 @@ public class jscrot {
             // Exit
             System.out.println("Thanks for using JTakeScrot!");
             System.exit(0);
+        }
+
+        // Try and make things look nicer
+        try {
+            // Set the Look and Feel of the application to the operating
+            // system's look and feel.
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (Exception e) {
+            System.out.println("Couldn't set native look and feel. Using swing instead.");
         }
         // Create the tray icon
 
@@ -119,31 +118,10 @@ public class jscrot {
         });
     }
 }
-class ImageFilter extends FileFilter {
 
-    //Accept all directories and all gif, jpg, tiff, or png files.
-    public boolean accept(File f) {
-        if (f.isDirectory()) {
-            return true;
-        }
-
-        String extension = Utils.getExtension(f);
-        return extension != null && (extension.equals(Utils.gif) || extension.equals(Utils.jpeg) || extension.equals(Utils.jpg) || extension.equals(Utils.png));
-
-    }
-
-    //The description of this filter
-    public String getDescription() {
-        return "Just Images";
-    }
-}
 
 class Utils {
 
-    public final static String jpeg = "jpeg";
-    public final static String jpg = "jpg";
-    public final static String gif = "gif";
-    public final static String png = "png";
 
     /*
      * Get the extension of a file.
