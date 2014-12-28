@@ -1,10 +1,13 @@
 package com.jscrot;
 
+import com.sun.org.apache.xml.internal.security.utils.Base64;
+import org.json.*;
 import javax.swing.filechooser.*;
 import java.awt.*;
+import java.awt.datatransfer.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
+import java.io.*;
 import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.net.URL;
@@ -20,7 +23,7 @@ public class jscrot {
         return robot.createScreenCapture(screenRectangle);
     }
 
-    public static void takeScreenshot() throws Exception {
+    public static void takeScreenshot(TrayIcon tray) throws Exception {
         // Take the screen shot
         BufferedImage screenShot = scrot();
         // Choose file
@@ -39,6 +42,41 @@ public class jscrot {
                 ImageIO.write(screenShot, Utils.getExtension(file), file);
             } catch (Exception e) {
                 System.out.println("Error: You selected an invalid file type!");
+                JOptionPane.showMessageDialog(null, "You selected an invalid filetype!", "Error", JOptionPane.ERROR_MESSAGE);
+            }
+
+            // Try and upload the image to imgur
+            try {
+                ByteArrayOutputStream byteArray = new ByteArrayOutputStream();
+                ImageIO.write(screenShot, Utils.getExtension(file), byteArray);
+                byte[] byteImage = byteArray.toByteArray();
+                ImgurUploader iu = new ImgurUploader();
+                String ret = iu.uploadImage("207326a9504700b", Base64.encode(byteImage));
+                System.out.println(ret);
+                // Parse returned JSON
+                JSONObject json = new JSONObject(ret);
+                String id = json.getJSONObject("data").getString("id");
+
+                // Show link
+                String imgur_url = "https://i.imgur.com/" + id;
+                JTextArea s_url = new JTextArea(imgur_url);
+                s_url.setEditable(true);
+                JOptionPane.showMessageDialog(null, s_url, "Image uploaded to imgur", JOptionPane.INFORMATION_MESSAGE);
+                try {
+                    StringSelection ss = new StringSelection(imgur_url);
+                    Toolkit tk = Toolkit.getDefaultToolkit();
+                    Clipboard clip = tk.getSystemClipboard();
+                    clip.setContents(ss, null);
+                    tray.displayMessage("Notice", "URL saved to clipboard", TrayIcon.MessageType.INFO);
+                }
+                catch (Exception e) {
+                    System.out.println("Error: Couldn't save URL to clipboard.");
+                    JOptionPane.showMessageDialog(null, "Couldn't save URL to clipboard.", "Error", JOptionPane.ERROR_MESSAGE);
+                }
+            }
+            catch (Exception e) {
+                System.out.println("Error while uploading image to Imgur.");
+                JOptionPane.showMessageDialog(null, "Error while uploading image to imgur.", "Error", JOptionPane.ERROR_MESSAGE);
             }
         }
     }
@@ -48,6 +86,7 @@ public class jscrot {
 
         if (imageURL == null) {
             System.err.println("Resource not found: " + path);
+            JOptionPane.showMessageDialog(null, "Resource not found: " + path, "Error", JOptionPane.ERROR_MESSAGE);
             return null;
         } else {
             return (new ImageIcon(imageURL, description)).getImage();
@@ -60,9 +99,10 @@ public class jscrot {
         if (!SystemTray.isSupported()) {
             // Notice
             System.out.println("Tray icons are not supported in this platform. A screenshot is going to be taken now.");
+            JOptionPane.showMessageDialog(null, "Tray icons aren't supported in this platform. Taking a screenshot now...", "Error", JOptionPane.ERROR_MESSAGE);
             // Try and take a screenshot
             try {
-                takeScreenshot();
+                takeScreenshot(null);
             } catch (Exception e1) {
                 e1.printStackTrace();
             }
@@ -78,6 +118,7 @@ public class jscrot {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (Exception e) {
             System.out.println("Couldn't set native look and feel. Using swing instead.");
+            JOptionPane.showMessageDialog(null, "Couldn't set native look and feel. Using swing instead.", "Error", JOptionPane.ERROR_MESSAGE);
         }
         // Create the tray icon
 
@@ -97,15 +138,17 @@ public class jscrot {
             tray.add(trayIcon);
         } catch (AWTException e) {
             System.out.println("TrayIcon could not be added.");
+            JOptionPane.showMessageDialog(null, "Couldn't add tray icon.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
         trayIcon.addActionListener(new ActionListener() {
             public void actionPerformed(ActionEvent e) {
                 try {
-                    takeScreenshot();
+                    takeScreenshot(trayIcon);
                 } catch (Exception e1) {
                     e1.printStackTrace();
+
                 }
             }
         });
